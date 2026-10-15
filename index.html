@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة الإمبوستر | Imposter Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between p-4">
+
+    <!-- Header -->
+    <header class="text-center my-4">
+        <h1 class="text-4xl font-black text-rose-500 tracking-wider mb-1">🕵️ لعبة الإمبوستر</h1>
+        <p class="text-slate-400 text-sm">شكون هو الخائن وسطكم؟ شكون كيكذب؟</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+        
+        <!-- STEP 1: Add Players -->
+        <div id="setup-step" class="space-y-6">
+            <h2 class="text-xl font-bold text-center border-b border-slate-800 pb-3">إضافة اللاعبين</h2>
+            
+            <div class="flex gap-2">
+                <input type="text" id="player-input" placeholder="سمية اللاعب..." 
+                    class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500">
+                <button onclick="addPlayer()" 
+                    class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-3 rounded-xl transition">
+                    زيد
+                </button>
+            </div>
+
+            <!-- Players List -->
+            <div>
+                <p class="text-xs text-slate-400 mb-2">اللاعبين الحاضرين (<span id="player-count">0</span>):</p>
+                <div id="players-list" class="flex flex-wrap gap-2 min-h-[60px] p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <p id="empty-msg" class="text-slate-600 text-sm italic w-full text-center py-2">زيد على الأقل 3 ديال الدراري باش تبداو</p>
+                </div>
+            </div>
+
+            <button onclick="startGame()" id="start-btn" disabled 
+                class="w-full bg-slate-800 text-slate-500 font-black py-4 rounded-xl text-lg transition cursor-not-allowed">
+                يبدأ الماتش 🚀
+            </button>
+        </div>
+
+        <!-- STEP 2: Role Reveal (Pass & Play) -->
+        <div id="reveal-step" class="hidden space-y-6 text-center">
+            <h2 class="text-lg font-bold text-slate-300">دور كشف الكلمة السرية 🤫</h2>
+            <p class="text-xs text-slate-400">عطي التيليفون/البيسي للاعب المطلوب ويدوس على اسمه باش يشوف كارت ديالو</p>
+
+            <div id="reveal-buttons" class="grid grid-cols-2 gap-3"></div>
+
+            <div id="card-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-xs w-full text-center space-y-4 shadow-2xl">
+                    <h3 id="modal-player-name" class="text-xl font-bold text-rose-400"></h3>
+                    <div id="modal-content" class="py-6 px-4 bg-slate-950 rounded-xl border border-slate-800"></div>
+                    <button onclick="closeModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl">
+                        خبي الكارت ورجع 🔒
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="startDiscussion()" id="go-discuss-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl text-lg transition">
+                بدا النقاش والتصويت 🗣️
+            </button>
+        </div>
+
+        <!-- STEP 3: Discussion & Game Loop -->
+        <div id="game-step" class="hidden space-y-6 text-center">
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+                <p class="text-xs text-slate-400">الموضوع/الفئة:</p>
+                <p id="current-category" class="text-lg font-bold text-rose-400"></p>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="text-xl font-bold">وقت النقاش! ⏱️</h3>
+                <p class="text-sm text-slate-400">تحدثوا وسولوا بعضياتكم باش تعرفوا شكون هو الإمبوستر اللي كينقل أو كيطنز!</p>
+            </div>
+
+            <button onclick="revealImposter()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-4 rounded-xl text-lg transition">
+                كشف الإمبوستر والنتيجة 🔍
+            </button>
+        </div>
+
+        <!-- STEP 4: Result -->
+        <div id="result-step" class="hidden space-y-6 text-center">
+            <h2 class="text-2xl font-black text-rose-500">نتيجة الجولة 🎭</h2>
+            
+            <div class="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-4">
+                <div>
+                    <p class="text-xs text-slate-400">الإمبوستر هو:</p>
+                    <p id="result-imposter" class="text-2xl font-black text-rose-400 mt-1"></p>
+                </div>
+                <hr class="border-slate-800">
+                <div>
+                    <p class="text-xs text-slate-400">الكلمة السرية كانت:</p>
+                    <p id="result-word" class="text-xl font-bold text-emerald-400 mt-1"></p>
+                </div>
+            </div>
+
+            <button onclick="resetGame()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl text-lg transition">
+                جولة جديدة 🔄
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-slate-600 my-2">
+        Imposter Game Moroccan Edition • GitHub Pages Ready
+    </footer>
+
+    <script>
+        const wordsList = [
+            { category: "أكلات مغربية 🇲🇦", word: "كُسْكُسْ" },
+            { category: "أكلات مغربية 🇲🇦", word: "طَاجِينْ" },
+            { category: "أكلات مغربية 🇲🇦", word: "بَسْطِيلَة" },
+            { category: "أماكن 🌍", word: "حَمَّامْ شَعْبِي" },
+            { category: "أماكن 🌍", word: "مَطَارْ" },
+            { category: "أماكن 🌍", word: "مَلْعَبْ كُورَة" },
+            { category: "تكنولوجيا 📱", word: "آيْفُونْ" },
+            { category: "تكنولوجيا 📱", word: "تِلْفَازَة" },
+            { category: "أشياء 📦", word: "صَبّاطْ" },
+            { category: "أشياء 📦", word: "كُرْسِي" },
+            { category: "حيوانات 🦁", word: "سَبُعْ" },
+            { category: "حيوانات 🦁", word: "قَطَّة" }
+        ];
+
+        let players = [];
+        let imposterIndex = -1;
+        let currentSecret = null;
+
+        function addPlayer() {
+            const input = document.getElementById('player-input');
+            const name = input.value.trim();
+            if (name && !players.includes(name)) {
+                players.push(name);
+                input.value = '';
+                renderPlayers();
+            }
+        }
+
+        function removePlayer(index) {
+            players.splice(index, 1);
+            renderPlayers();
+        }
+
+        function renderPlayers() {
+            const list = document.getElementById('players-list');
+            const count = document.getElementById('player-count');
+            const startBtn = document.getElementById('start-btn');
+
+            count.innerText = players.length;
+
+            if (players.length === 0) {
+                list.innerHTML = `<p id="empty-msg" class="text-slate-600 text-sm italic w-full text-center py-2">زيد على الأقل 3 ديال الدراري باش تبداو</p>`;
+            } else {
+                list.innerHTML = players.map((p, i) => `
+                    <span class="bg-slate-800 border border-slate-700 text-sm text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                        ${p}
+                        <button onclick="removePlayer(${i})" class="text-rose-400 hover:text-rose-300 font-bold">×</button>
+                    </span>
+                `).join('');
+            }
+
+            if (players.length >= 3) {
+                startBtn.disabled = false;
+                startBtn.className = "w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-4 rounded-xl text-lg transition cursor-pointer shadow-lg";
+            } else {
+                startBtn.disabled = true;
+                startBtn.className = "w-full bg-slate-800 text-slate-500 font-black py-4 rounded-xl text-lg transition cursor-not-allowed";
+            }
+        }
+
+        function startGame() {
+            imposterIndex = Math.floor(Math.random() * players.length);
+            currentSecret = wordsList[Math.floor(Math.random() * wordsList.length)];
+
+            document.getElementById('setup-step').classList.add('hidden');
+            document.getElementById('reveal-step').classList.remove('hidden');
+
+            const revealContainer = document.getElementById('reveal-buttons');
+            revealContainer.innerHTML = players.map((p, i) => `
+                <button onclick="showCard(${i})" class="bg-slate-800 border border-slate-700 hover:border-rose-500 p-4 rounded-xl font-bold text-center transition">
+                    👤 ${p}
+                </button>
+            `).join('');
+        }
+
+        function showCard(index) {
+            const modal = document.getElementById('card-modal');
+            const pName = document.getElementById('modal-player-name');
+            const content = document.getElementById('modal-content');
+
+            pName.innerText = players[index];
+
+            if (index === imposterIndex) {
+                content.innerHTML = `
+                    <p class="text-2xl font-black text-rose-500 mb-1">🤫 أَنْتَ هُوَ الإِمْبُوسْتِرْ!</p>
+                    <p class="text-xs text-slate-400">حاول تمثل وما تخلي حاد يعيق بيك!</p>
+                    <p class="text-xs text-amber-400 mt-2">الفئة: ${currentSecret.category}</p>
+                `;
+            } else {
+                content.innerHTML = `
+                    <p class="text-xs text-slate-400 mb-1">الكلمة السرية هي:</p>
+                    <p class="text-2xl font-black text-emerald-400 mb-2">${currentSecret.word}</p>
+                    <p class="text-xs text-slate-400">الفئة: ${currentSecret.category}</p>
+                `;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('card-modal').classList.add('hidden');
+        }
+
+        function startDiscussion() {
+            document.getElementById('reveal-step').classList.add('hidden');
+            document.getElementById('game-step').classList.remove('hidden');
+            document.getElementById('current-category').innerText = currentSecret.category;
+        }
+
+        function revealImposter() {
+            document.getElementById('game-step').classList.add('hidden');
+            document.getElementById('result-step').classList.remove('hidden');
+
+            document.getElementById('result-imposter').innerText = players[imposterIndex];
+            document.getElementById('result-word').innerText = currentSecret.word;
+        }
+
+        function resetGame() {
+            document.getElementById('result-step').classList.add('hidden');
+            document.getElementById('setup-step').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
